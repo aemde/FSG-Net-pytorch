@@ -52,7 +52,7 @@ class _RepeatSampler(object):
 
 
 def is_image(src):
-    return True if os.path.splitext(src)[1].lower() in ['.jpg', '.png', '.tif', '.ppm'] else False
+    return True if os.path.splitext(src)[1].lower() in ['.jpg', '.png', '.tif', '.ppm', '.gif'] else False
 
 
 class Image2ImageLoader_resize(Dataset):
