@@ -48,5 +48,5 @@
   train_x_path: '/content/FSG-Net-pytorch/dataset/DRIVE/training/images',
   train_y_path: '/content/FSG-Net-pytorch/dataset/DRIVE/training/1st_manual',
   val_x_path: '/content/FSG-Net-pytorch/dataset/DRIVE/test/images',
-  val_y_path: '/content/FSG-Net-pytorch/dataset/DRIVE/test/1st_manual',
+  val_y_path: ''  # Kosongkan jika hanya untuk prediksi
 }
