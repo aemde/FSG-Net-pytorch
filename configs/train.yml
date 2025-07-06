@@ -45,8 +45,8 @@
   transform_rand_resize: true,
   transform_rand_crop: 288,
 
-  train_x_path: '/path/to/train/input',
-  train_y_path: '/path/to/train/label',
-  val_x_path: '/path/to/val/input',
-  val_y_path: '/path/to/val/label',
+  train_x_path: '/content/FSG-Net-pytorch/dataset/DRIVE/train/input',
+  train_y_path: '/content/FSG-Net-pytorch/dataset/DRIVE/train/label',
+  val_x_path: '/content/FSG-Net-pytorch/dataset/DRIVE/val/input',
+  val_y_path: '/content/FSG-Net-pytorch/dataset/DRIVE/val/label'
 }
