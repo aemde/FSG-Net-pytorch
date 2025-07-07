@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch
 
+# Import berbagai backbone arsitektur dari submodule
 from models.backbones import Unet_part
 from models.backbones import UNeTPluss
 from models.backbones import ResUNet as ResUNets
@@ -12,20 +13,29 @@ from models.backbones import R2UNet as R2UNet_parts
 from models.backbones import FRUNet as FRUNet_parts
 from models.backbones import FSGNet as FSGNet_parts
 
+# ===================
+# KUMPULAN WRAPPER CLASS UNTUK BERBAGAI ARSITEKTUR SEGMENTASI
+# ===================
 
 class UNet(nn.Module):
+    """
+    Implementasi UNet klasik untuk segmentasi.
+    Encoder-decoder dengan skip connection.
+    """
     def __init__(self, in_channels=3, n_classes=2, bilinear=True, **kwargs):
         super().__init__()
         self.n_channels = in_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
 
+        # Encoder
         self.inc = Unet_part.DoubleConv(in_channels, 64)
         self.down1 = Unet_part.Down(64, 128)
         self.down2 = Unet_part.Down(128, 256)
         self.down3 = Unet_part.Down(256, 512)
         factor = 2 if bilinear else 1
         self.down4 = Unet_part.Down(512, 1024 // factor)
+        # Decoder
         self.up1 = Unet_part.Up(1024, 512 // factor, bilinear)
         self.up2 = Unet_part.Up(512, 256 // factor, bilinear)
         self.up3 = Unet_part.Up(256, 128 // factor, bilinear)
@@ -33,6 +43,7 @@ class UNet(nn.Module):
         self.outc = Unet_part.OutConv(64, n_classes)
 
     def forward(self, x):
+        # Forward pass klasik UNet: downsampling → upsampling + skip connection
         x1 = self.inc(x)
         x2 = self.down1(x1)
         x3 = self.down2(x2)
@@ -45,10 +56,14 @@ class UNet(nn.Module):
         x = self.up4(x, x1)
         logits = self.outc(x)
 
+        # Output berupa probabilitas (sigmoid) untuk tiap pixel
         return torch.sigmoid(logits)
 
 
 class UNet2P(nn.Module):
+    """
+    Wrapper untuk UNet++ (nested UNet).
+    """
     def __init__(self, in_channels=3, n_classes=1, **kwargs):
         super().__init__()
         self.unet2p = UNeTPluss.UNet_2Plus(in_channels=in_channels, n_classes=n_classes)
@@ -58,6 +73,9 @@ class UNet2P(nn.Module):
 
 
 class UNet3P_Deep(nn.Module):
+    """
+    Wrapper untuk UNet3+ dengan deep supervision.
+    """
     def __init__(self, in_channels=3, n_classes=1, **kwargs):
         super().__init__()
         self.unet3p = UNeTPluss.UNet_3Plus_DeepSup(in_channels=in_channels, n_classes=n_classes)
@@ -67,6 +85,9 @@ class UNet3P_Deep(nn.Module):
 
 
 class ResUNet(nn.Module):
+    """
+    Wrapper untuk ResUNet (UNet dengan blok residual).
+    """
     def __init__(self, in_channels=3, n_classes=1, **kwargs):
         super().__init__()
         self.resunet = ResUNets.ResUnet(channel=in_channels, n_classes=n_classes)
@@ -76,6 +97,9 @@ class ResUNet(nn.Module):
 
 
 class ResUNet2P(nn.Module):
+    """
+    Wrapper untuk ResUNet++.
+    """
     def __init__(self, in_channels=3, n_classes=1, **kwargs):
         super().__init__()
         self.resunet2p = ResUNets.ResUnetPlusPlus(channel=in_channels, n_classes=n_classes)
@@ -85,6 +109,10 @@ class ResUNet2P(nn.Module):
 
 
 class SAUNet(nn.Module):
+    """
+    Wrapper untuk Spatial Attention UNet.
+    base_c: jumlah channel dasar (default 16)
+    """
     def __init__(self, in_channels=3, n_classes=2, base_c=16, **kwargs):
         super().__init__()
         self.sa_unet = SAUNets.SA_UNet(in_channels=in_channels, num_classes=n_classes, base_c=base_c)
@@ -94,25 +122,36 @@ class SAUNet(nn.Module):
 
 
 class DCSAU_UNet(nn.Module):
+    """
+    Wrapper untuk DCSAU-UNet (UNet dengan atrous & spatial attention).
+    """
     def __init__(self, in_channels=3, n_classes=1, **kwargs):
         super().__init__()
         self.dcsau_unet = DCSAUUNet.DCSAU_UNet(img_channels=in_channels, n_classes=n_classes)
 
     def forward(self, x):
+        # Output probabilitas
         return torch.sigmoid(self.dcsau_unet(x))
 
 
 class AGNet(nn.Module):
+    """
+    Wrapper untuk Attention-Gated UNet.
+    """
     def __init__(self, in_channels=3, n_classes=2, **kwargs):
         super().__init__()
         self.ag_net = AGNet_parts.AG_Net(in_channels=in_channels, n_classes=n_classes)
 
     def forward(self, x):
+        # Output multi-level, pakai sigmoid di setiap output
         out = [torch.sigmoid(item) for item in self.ag_net(x)]
         return out
 
 
 class ATTUNet(nn.Module):
+    """
+    Wrapper untuk Attention U-Net (versi R2UNet_parts).
+    """
     def __init__(self, in_channels=3, n_classes=1, **kwargs):
         super().__init__()
         self.attu_net = R2UNet_parts.AttU_Net(img_ch=in_channels, output_ch=n_classes)
@@ -122,6 +161,9 @@ class ATTUNet(nn.Module):
 
 
 class R2UNet(nn.Module):
+    """
+    Wrapper untuk Recurrent Residual UNet (R2U-Net).
+    """
     def __init__(self, in_channels=3, n_classes=1, **kwargs):
         super().__init__()
         self.r2unet = R2UNet_parts.R2U_Net(img_ch=in_channels, output_ch=n_classes)
@@ -131,29 +173,39 @@ class R2UNet(nn.Module):
 
 
 class ConvUNeXt(nn.Module):
+    """
+    Wrapper untuk ConvUNeXt backbone (UNet-style dengan blok ConvNeXt).
+    base_c: jumlah channel dasar
+    """
     def __init__(self, in_channels, n_classes, base_c=32, **kwargs):
         super().__init__()
         self.convunext = ConvUNeXt_parts.ConvUNeXt(in_channels=in_channels, num_classes=n_classes, base_c=base_c)
 
     def forward(self, x):
         out = self.convunext(x)
+        # Output dari ConvUNeXt_parts biasanya dict
         out = out['out']
-
         return torch.sigmoid(out)
 
 
 class FRUNet(nn.Module):
+    """
+    Wrapper untuk FR-UNet (Full-Resolution UNet).
+    """
     def __init__(self, in_channels, n_classes, **kwargs):
         super().__init__()
         self.frunet = FRUNet_parts.FR_UNet(num_channels=in_channels, num_classes=n_classes)
 
     def forward(self, x):
         out = self.frunet(x)
-
         return torch.sigmoid(out)
 
 
 class FSGNet(nn.Module):
+    """
+    Wrapper untuk FSG-Net (Full Scale Guided Net), model utama paper.
+    Memasukkan parameter depths, base_c, kernel_size untuk eksperimen ablation.
+    """
     def __init__(self,
                  in_channels=3,
                  n_classes=1,
@@ -162,8 +214,10 @@ class FSGNet(nn.Module):
                  kernel_size=3,
                  **kwargs):
         super().__init__()
+        # Instance FSGNet dari FSGNet_parts
         self.FSGNet = FSGNet_parts.FSGNet(in_channels, n_classes, base_c,
                                           depths=depths, kernel_size=kernel_size)
 
     def forward(self, x):
+        # Forward FSGNet langsung ke model bagian backbone
         return self.FSGNet(x)
