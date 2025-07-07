@@ -48,5 +48,20 @@
   train_x_path: '/content/FSG-Net-pytorch/dataset/DRIVE/train/input',
   train_y_path: '/content/FSG-Net-pytorch/dataset/DRIVE/train/label',
   val_x_path: '/content/FSG-Net-pytorch/dataset/DRIVE/val/input',
-  val_y_path: '/content/FSG-Net-pytorch/dataset/DRIVE/val/label'
+  val_y_path: '/content/FSG-Net-pytorch/dataset/DRIVE/val/label',
+
+#  train_x_path: '/content/FSG-Net-pytorch/dataset/DRIVE/train/input',
+#  train_y_path: '/content/FSG-Net-pytorch/dataset/DRIVE/train/label',
+#  val_x_path: '/content/FSG-Net-pytorch/dataset/DRIVE/val/input',
+#  val_y_path: '/content/FSG-Net-pytorch/dataset/DRIVE/val/label',
+#
+#  train_x_path: '/content/FSG-Net-pytorch/dataset/DRIVE/train/input',
+#  train_y_path: '/content/FSG-Net-pytorch/dataset/DRIVE/train/label',
+#  val_x_path: '/content/FSG-Net-pytorch/dataset/DRIVE/val/input',
+#  val_y_path: '/content/FSG-Net-pytorch/dataset/DRIVE/val/label',
+#
+#  train_x_path: '/content/FSG-Net-pytorch/dataset/DRIVE/train/input',
+#  train_y_path: '/content/FSG-Net-pytorch/dataset/DRIVE/train/label',
+#  val_x_path: '/content/FSG-Net-pytorch/dataset/DRIVE/val/input',
+#  val_y_path: '/content/FSG-Net-pytorch/dataset/DRIVE/val/label',
 }
