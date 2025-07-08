@@ -1,12 +1,12 @@
 {
-  "debug": False,
+  "debug": false,
   "mode": "train",
-  "cuda": True,
-  "pin_memory": True,
-  "wandb": False,
+  "cuda": true,
+  "pin_memory": true,
+  "wandb": false,
   "worker": 2,
   "log_interval": 100,
-  "save_interval": 1,
+  "save_interval": 5,                // Save per 5 epoch, disk lebih awet
   "saved_model_directory": "model_ckpts",
   "train_fold": 1,
   "project_name": "AMDNet",
@@ -27,19 +27,19 @@
   "cycles": 100,
   "warmup_epoch": 20,
   "weight_decay": 0.05,
-  "batch_size": 2,
+  "batch_size": 4,                  // Uji coba naikkan jadi 4
   "epoch": 100,
-  "ema_decay": 0,
+  "ema_decay": 0.99,                // Aktifkan EMA
   "class_weight": [1.0, 1.0],
   "model_path": "",
-  "freeze_layer": False,
+  "freeze_layer": false,
 
-  "transform_blur": True,
-  "transform_jitter": True,
-  "transform_hflip": True,
-  "transform_perspective": True,
-  "transform_cutmix": True,
-  "transform_rand_resize": True,
+  "transform_blur": true,
+  "transform_jitter": true,
+  "transform_hflip": true,
+  "transform_perspective": false,   // Optional, matikan jika lambat
+  "transform_cutmix": true,
+  "transform_rand_resize": true,
   "transform_rand_crop": 288,
 
   "train_x_path": "/content/FSG-Net-pytorch/dataset/DRIVE/train/input",
