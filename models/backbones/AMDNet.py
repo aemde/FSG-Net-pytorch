@@ -159,9 +159,9 @@ class FastGuidedFilter_attention(nn.Module):
 class SimpleTransformerBlock(nn.Module):
     def __init__(self, dim, num_heads=4, mlp_ratio=4.):
         super().__init__()
-        self.norm1 = nn.LayerNorm([dim, 1, 1])
-        self.attn = nn.Conv2d(dim, dim, 1)  # Lightweight: ganti jika mau
-        self.norm2 = nn.LayerNorm([dim, 1, 1])
+        self.norm1 = nn.BatchNorm2d(dim)
+        self.attn = nn.Conv2d(dim, dim, 1)  # Lightweight, replace if needed
+        self.norm2 = nn.BatchNorm2d(dim)
         self.mlp = nn.Sequential(
             nn.Conv2d(dim, int(dim * mlp_ratio), 1),
             nn.GELU(),
