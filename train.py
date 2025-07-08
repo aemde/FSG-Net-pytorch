@@ -13,7 +13,6 @@ from models import losses as loss_hub
 from models import metrics
 from models import utils
 
-
 class Trainer_seg:
     def __init__(self, args, now_time=None):
         self.start_time = time.time()
@@ -36,6 +35,10 @@ class Trainer_seg:
         # Check cuda available and assign to device
         use_cuda = self.args.cuda and torch.cuda.is_available()
         self.device = torch.device('cuda' if use_cuda else 'cpu')
+        print(f'Use CUDA : {use_cuda}')
+        print(f'Current Device: {self.device}')
+        print(f'CUDA Available: {torch.cuda.is_available()}')
+        print(f'CUDA Device Count: {torch.cuda.device_count()}')
 
         # 'init' means that this variable must be initialized.
         # 'set' means that this variable is available of being set, not must.
@@ -81,6 +84,11 @@ class Trainer_seg:
             print('iteration_callback adapted.')
 
     def _train(self, epoch):
+        # Guard Cek GPU!
+        n_gpu = torch.cuda.device_count()
+        if self.args.cuda and n_gpu == 0:
+            raise RuntimeError("Tidak ada GPU terdeteksi! Silakan aktifkan GPU di runtime Colab dan restart runtime sebelum training.")
+
         self.model.train()
         self.callback.train_callback()
         batch_losses = []
@@ -89,8 +97,12 @@ class Trainer_seg:
         print('Start Train')
         for batch_idx, (x_in, target) in enumerate(self.loader_train.Loader):
             self.callback.iteration_callback()
-            if (x_in[0].shape[0] / torch.cuda.device_count()) <= torch.cuda.device_count():   # if has 1 batch per GPU
-                break   # avoid BN issue
+
+            # OPTIONAL: Jika tetap ingin guard ini (BN issue di multiGPU besar), gunakan n_gpu
+            if self.args.cuda and n_gpu > 0:
+                if (x_in[0].shape[0] / n_gpu) <= n_gpu:
+                    print("Batch size terlalu kecil untuk jumlah GPU. Training distop untuk mencegah masalah BatchNorm.")
+                    break
 
             x_in, _ = x_in
             target, _ = target
@@ -142,6 +154,8 @@ class Trainer_seg:
                        'Train f1_score': f1_score},
                       step=epoch)
 
+    # ... sisa kode tidak berubah, sama dengan punyamu di atas ...
+
     def _validate(self, model, epoch):
         model.eval()
         f1_list = []
@@ -186,25 +200,18 @@ class Trainer_seg:
         for epoch in range(1, self.args.epoch + 1):
             self._train(epoch)
             self._validate(self.model, epoch)
-
             print('### {} / {} epoch ended###'.format(epoch, self.args.epoch))
 
     def save_model(self, model, model_name, epoch, metric=None, best_flag=False, metric_name='metric'):
         file_path = self.saved_model_directory + '/'
-
         file_format = file_path + model_name + '-Epoch_' + str(epoch) + '-' + metric_name + '_' + str(metric) + '.pt'
-
         if not os.path.exists(file_path):
             os.mkdir(file_path)
-
         if best_flag:
             if metric_name in self.model_post_path_dict.keys():
                 os.remove(self.model_post_path_dict[metric_name])
             self.model_post_path_dict[metric_name] = file_format
-
         torch.save(model.state_dict(), file_format)
-
-
         print(file_format + '\t model saved!!')
         self.last_saved_epoch = epoch
 
@@ -213,7 +220,6 @@ class Trainer_seg:
                            y_path,
                            batch_size,
                            mode):
-
         if self.args.dataloader == 'Image2Image_zero_pad':
             loader = dataloader_hub.Image2ImageDataLoader_zero_pad(x_path=x_path,
                                                                    y_path=y_path,
@@ -232,33 +238,27 @@ class Trainer_seg:
                                                                  args=self.args)
         else:
             raise Exception('No dataloader named', self.args.dataloader)
-
         return loader
 
     @staticmethod
     def init_model(model_name, device, args):
         model = getattr(model_implements, model_name)(**vars(args)).to(device)
-
         return torch.nn.DataParallel(model)
 
     def __init_criterion(self, criterion_name):
         criterion = getattr(loss_hub, criterion_name)().to(self.device)
-
         return criterion
 
     def __init_optimizer(self, optimizer_name, model, lr):
         optimizer = None
-
         if optimizer_name == 'AdamW':
             optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()),
                                           lr=lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=self.args.weight_decay)
-
         return optimizer
 
     def __set_scheduler(self, optimizer, scheduler_name, data_loader, batch_size):
         scheduler = None
         steps_per_epoch = math.ceil((data_loader.__len__() / batch_size))
-
         if hasattr(self.args, 'scheduler'):
             if scheduler_name == 'WarmupCosine':
                 scheduler = lr_scheduler.WarmupCosineSchedule(optimizer=optimizer,
@@ -276,5 +276,4 @@ class Trainer_seg:
                 raise Exception('No scheduler named', scheduler_name)
         else:
             pass
-
         return scheduler
