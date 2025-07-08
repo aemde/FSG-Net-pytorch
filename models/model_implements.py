@@ -11,6 +11,7 @@ from models.backbones import ConvUNeXt as ConvUNeXt_parts
 from models.backbones import R2UNet as R2UNet_parts
 from models.backbones import FRUNet as FRUNet_parts
 from models.backbones import FSGNet as FSGNet_parts
+from models.backbones import AMDNet as AMDNet_parts
 
 
 class UNet(nn.Module):
@@ -167,3 +168,19 @@ class FSGNet(nn.Module):
 
     def forward(self, x):
         return self.FSGNet(x)
+
+
+class AMDNet(nn.Module):
+    def __init__(self,
+                 in_channels=3,
+                 n_classes=1,
+                 depths=[3, 3, 9, 3],
+                 base_c=64,
+                 kernel_size=3,
+                 **kwargs):
+        super().__init__()
+        self.AMDNet = AMDNet_parts.AMDNet(in_channels, n_classes, base_c,
+                                          depths=depths, kernel_size=kernel_size)
+
+    def forward(self, x):
+        return self.AMDNet(x)

@@ -132,6 +132,8 @@ class Inferencer:
             model = model_implements.FRUNet(n_classes=1, in_channels=self.args.input_channel)
         elif model_name == 'FSGNet':
             model = model_implements.FSGNet(n_classes=1, in_channels=self.args.input_channel)
+        elif model_name == 'AMDNet':
+            model = model_implements.AMDNet(n_classes=1, in_channels=self.args.input_channel)
         else:
             raise Exception('No model named', model_name)
 
