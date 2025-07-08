@@ -28,7 +28,6 @@ class Trainer_seg:
                     f_w.write(f_r.read())
 
         if args.wandb:
-            # wandb.login(key='your_WandB_key')
             wandb.init(project='{}'.format(args.project_name), config=args, name=now_time,
                        settings=wandb.Settings(start_method="fork"))
 
@@ -40,8 +39,6 @@ class Trainer_seg:
         print(f'CUDA Available: {torch.cuda.is_available()}')
         print(f'CUDA Device Count: {torch.cuda.device_count()}')
 
-        # 'init' means that this variable must be initialized.
-        # 'set' means that this variable is available of being set, not must.
         self.loader_train = self.__init_data_loader(self.args.train_x_path,
                                                     self.args.train_y_path,
                                                     self.args.batch_size,
@@ -63,28 +60,26 @@ class Trainer_seg:
 
         self.criterion = self.__init_criterion(self.args.criterion)
 
-        if self.args.wandb:
-            if self.args.mode == 'train':
-                wandb.watch(self.model)
+        if self.args.wandb and self.args.mode == 'train':
+            wandb.watch(self.model)
 
         self.saved_model_directory = self.args.saved_model_directory + '/' + now_time
 
-        self.metric_best = {'f1_score': 0}  # the 'value' follows the metric on validation
+        self.metric_best = {'f1_score': 0}
         self.model_post_path_dict = {}
         self.last_saved_epoch = 0
-
         self.__validate_interval = 1 if (self.loader_train.__len__() // self.args.train_fold) == 0 else self.loader_train.__len__() // self.args.train_fold
 
         self.callback = utils.TrainerCallBack()
-        if hasattr(self.model.module, 'train_callback'):
-            self.callback.train_callback = self.model.module.train_callback
+        model_for_callback = self.model.module if hasattr(self.model, "module") else self.model
+        if hasattr(model_for_callback, 'train_callback'):
+            self.callback.train_callback = model_for_callback.train_callback
             print('train_callback adapted.')
-        if hasattr(self.model.module, 'iteration_callback'):
-            self.callback.iteration_callback = self.model.module.iteration_callback
+        if hasattr(model_for_callback, 'iteration_callback'):
+            self.callback.iteration_callback = model_for_callback.iteration_callback
             print('iteration_callback adapted.')
 
     def _train(self, epoch):
-        # Guard Cek GPU!
         n_gpu = torch.cuda.device_count()
         if self.args.cuda and n_gpu == 0:
             raise RuntimeError("Tidak ada GPU terdeteksi! Silakan aktifkan GPU di runtime Colab dan restart runtime sebelum training.")
@@ -98,8 +93,8 @@ class Trainer_seg:
         for batch_idx, (x_in, target) in enumerate(self.loader_train.Loader):
             self.callback.iteration_callback()
 
-            # OPTIONAL: Jika tetap ingin guard ini (BN issue di multiGPU besar), gunakan n_gpu
-            if self.args.cuda and n_gpu > 0:
+            # Only guard if MULTI-GPU
+            if self.args.cuda and n_gpu > 1:
                 if (x_in[0].shape[0] / n_gpu) <= n_gpu:
                     print("Batch size terlalu kecil untuk jumlah GPU. Training distop untuk mencegah masalah BatchNorm.")
                     break
@@ -111,9 +106,9 @@ class Trainer_seg:
 
             output = self.model(x_in)
 
-            if isinstance(output, tuple) or isinstance(output, list):  # condition for deep supervision
+            if isinstance(output, tuple) or isinstance(output, list):
                 loss = sum([self.criterion(item, target) for item in output]) / len(output)
-                output = output[0]  # please check that the first element of tuple is not interpolated in network.
+                output = output[0]
             else:
                 loss = self.criterion(output, target)
 
@@ -147,19 +142,21 @@ class Trainer_seg:
                                                             self.args.criterion,
                                                             loss_mean,
                                                             self.optimizer.param_groups[0]['lr']))
-        f1_score = sum(f1_list) / len(f1_list)
+        # Robust to empty f1_list
+        if len(f1_list) == 0:
+            print(f"Warning: No batch processed in epoch {epoch}, f1_list is empty.")
+            f1_score = float('nan')
+        else:
+            f1_score = sum(f1_list) / len(f1_list)
         print('{} epoch / Train f1_score: {}'.format(epoch, f1_score))
         if self.args.wandb:
             wandb.log({'Train Loss {}'.format(self.args.criterion): loss_mean,
                        'Train f1_score': f1_score},
                       step=epoch)
 
-    # ... sisa kode tidak berubah, sama dengan punyamu di atas ...
-
     def _validate(self, model, epoch):
         model.eval()
         f1_list = []
-
         with torch.no_grad():
             for batch_idx, (x_in, target) in enumerate(self.loader_val.Loader):
                 x_in, _ = x_in
@@ -169,21 +166,23 @@ class Trainer_seg:
 
                 output = model(x_in)
 
-                if isinstance(output, tuple) or isinstance(output, list):  # condition for Deep supervision
+                if isinstance(output, tuple) or isinstance(output, list):
                     output = output[0]
 
                 output_argmax = torch.where(output > 0.5, 1, 0).cpu()
                 metric_result = metrics.metrics_np(output_argmax[:, 0], target.squeeze(0).detach().cpu().numpy(), b_auc=False)
                 f1_list.append(metric_result['f1'])
-
-        f1_score = sum(f1_list) / len(f1_list)
+        # Robust for empty f1_list
+        if len(f1_list) == 0:
+            print(f"Warning: No batch processed in VALIDATION epoch {epoch}, f1_list is empty.")
+            f1_score = float('nan')
+        else:
+            f1_score = sum(f1_list) / len(f1_list)
         print('{} epoch / Val f1_score: {}'.format(epoch, f1_score))
         if self.args.wandb:
-            wandb.log({'Val f1_score': f1_score},
-                      step=epoch)
+            wandb.log({'Val f1_score': f1_score}, step=epoch)
 
         model_metrics = {'f1_score': f1_score}
-
         for key in model_metrics.keys():
             if model_metrics[key] > self.metric_best[key]:
                 self.metric_best[key] = model_metrics[key]
@@ -192,9 +191,8 @@ class Trainer_seg:
         if (epoch - self.last_saved_epoch) > self.args.cycles * 4:
             print('The model seems to be converged. Early stop training.')
             print(f'Best F1 -----> {self.metric_best["f1_score"]}')
-            wandb.log({f'Best F1': self.metric_best['f1_score']},
-                      step=epoch)
-            sys.exit()  # safe exit
+            wandb.log({f'Best F1': self.metric_best['f1_score']}, step=epoch)
+            sys.exit()
 
     def start_train(self):
         for epoch in range(1, self.args.epoch + 1):
@@ -243,7 +241,11 @@ class Trainer_seg:
     @staticmethod
     def init_model(model_name, device, args):
         model = getattr(model_implements, model_name)(**vars(args)).to(device)
-        return torch.nn.DataParallel(model)
+        # Only use DataParallel if more than 1 GPU and batch size >= number of GPU
+        if torch.cuda.device_count() > 1 and args.batch_size >= torch.cuda.device_count():
+            return torch.nn.DataParallel(model)
+        else:
+            return model
 
     def __init_criterion(self, criterion_name):
         criterion = getattr(loss_hub, criterion_name)().to(self.device)
@@ -267,7 +269,7 @@ class Trainer_seg:
                                                               cycles=self.args.epoch / self.args.cycles,
                                                               last_epoch=-1)
             elif scheduler_name == 'CosineAnnealingLR':
-                scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.args.cycles, eta_min=self.args.lr / 100)   # min: lr / 100, max: lr
+                scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.args.cycles, eta_min=self.args.lr / 100)
             elif scheduler_name == 'ConstantLRSchedule':
                 scheduler = lr_scheduler.ConstantLRSchedule(optimizer, last_epoch=-1)
             elif scheduler_name == 'WarmupConstantSchedule':
