@@ -10,11 +10,11 @@
   save_interval: 1,
   saved_model_directory: 'model_ckpts',
   train_fold: 1,
-  project_name: 'FSG-Net',
+  project_name: 'AMDNet',
   CUDA_VISIBLE_DEVICES: '2',
 
   ### Train Parameters
-  model_name: 'FSGNet',
+  model_name: 'AMDNet',
     n_classes: 1,
     in_channels: 3,
   dataloader: 'Image2Image_zero_pad',
