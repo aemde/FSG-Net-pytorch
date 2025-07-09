@@ -126,47 +126,40 @@ def center_padding(img, target_size, pad_digit=0):
 
 
 def remove_center_padding(img):
-    """
+    """"
     Args:
-        img: torch.Tensor (B, C, H, W) atau (B, H, W)
-    Returns:
-        img: tensor tanpa di-crop, KECUALI kalau shape terakhir [608, 704, 1024, 1344]
+        img: torch.Tensor or PIL.Image -> (b, c, h, w)
+
+    Returns: torch.Tensor or PIL.Image -> (c, target_h, target_w)
     """
-    allowed_shapes = [608, 704, 1024, 1344]
-    # Antisipasi input: (B, C, H, W) atau (B, H, W)
+    is_tensor = True
     if isinstance(img, Image.Image):
         img = tf.to_tensor(img)
-    # Cek dimensi terakhir (W)
-    w = img.shape[-1]
-    h = img.shape[-2]
+        is_tensor = False
+    _, in_h, in_w = img[0].shape
 
-    if w not in allowed_shapes:
-        # Tidak perlu di-crop
-        print(f"[WARNING] remove_center_padding: shape {img.shape} bukan {allowed_shapes}, tidak crop.")
-        return img
-
-    # Crop center sesuai standar DRIVE/STARE/HRF, dll
-    if w == 608:  # DRIVE
-        crop_h, crop_w = 584, 565
-    elif w == 704:  # STARE
-        crop_h, crop_w = 605, 700
-    elif w == 1024:  # CHASE_DB1
-        crop_h, crop_w = 960, 999
-    elif w == 1344:  # HRF
-        crop_h, crop_w = 1024, 1024
+    if img.shape[-1] == 608:
+        target_size = (584, 565)
+    elif img.shape[-1] == 704:
+        target_size = (605, 700)
+    elif img.shape[-1] == 1024:
+        target_size = (960, 999)
+    elif img.shape[-1] == 640:
+        target_size = (768, 640)
     else:
-        crop_h, crop_w = h, w
+        raise ValueError('Input shape should be involved in [608, 704, 1024]')
 
-    pad_left = (w - crop_w) // 2
-    pad_top = (h - crop_h) // 2
-    if img.dim() == 4:
-        # (B, C, H, W)
-        return img[:, :, pad_top:pad_top+crop_h, pad_left:pad_left+crop_w]
-    elif img.dim() == 3:
-        # (B, H, W)
-        return img[:, pad_top:pad_top+crop_h, pad_left:pad_left+crop_w]
-    else:
-        return img  # fallback
+    assert target_size[0] <= in_h and target_size[1] <= in_w, 'target_size should be smaller than input_size'
+
+    pad_left = abs((target_size[1] - in_w) // 2)
+    pad_top = abs((target_size[0] - in_h) // 2)
+
+    tensor_unpadded = img[:, :, pad_top:pad_top + target_size[0], pad_left:pad_left + target_size[1]]
+    _, _, out_h, out_w, = tensor_unpadded.shape
+
+    assert target_size[0] == out_h and target_size[1] == out_w, 'target_size should be same with input_size'
+
+    return tensor_unpadded if is_tensor else tf.to_pil_image(tensor_unpadded)
 
 
 class TrainerCallBack:
