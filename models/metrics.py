@@ -67,7 +67,7 @@ class StreamSegMetrics_segmentation(_StreamMetrics):
         return hist
 
     def get_results(self):
-        """Returns accuracy score evaluation result.
+        """Returns accuracy score evaluation result ( L4 GPU ).
             - overall accuracy
             - mean accuracy
             - mean iou

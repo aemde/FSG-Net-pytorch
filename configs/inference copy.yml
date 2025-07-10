@@ -1,0 +1,28 @@
+{
+  ### Environment Parameters
+  debug: false,
+  mode: inference,
+  cuda: true,
+  pin_memory: true,
+  wandb: false,
+  worker: 2,
+  CUDA_VISIBLE_DEVICES: '0',
+
+  ### Train Parameters
+  model_name: 'AMDNet',
+    n_classes: 1,
+    in_channels: 3,
+    base_c: 64,
+  inference_mode: 'segmentation',
+  task: 'segmentation',
+  dataloader: 'Image2Image_resize',
+  criterion: 'DiceBCE',
+  input_space: 'RGB',
+  input_channel: 3,
+  input_size: [1024, 1024],  # DRIVE:608, STARE:704, CHASE_DB1:1024, HRF: 1344
+
+#  model_path: '/content/FSG-Net-pytorch/weights/FSG-Net-DRIVE.pt',
+  model_path: "/content/drive/MyDrive/Dataset/train-model/AMD-Net/AMDNet-Epoch_96-f1_score_0.7651500619329722.pt",
+  val_x_path: '/content/FSG-Net-pytorch/dataset/DRIVE/val/input',
+  val_y_path: '/content/FSG-Net-pytorch/dataset/DRIVE/val/label'
+}
